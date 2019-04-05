@@ -1,0 +1,1900 @@
+    <html>
+            <head>
+            <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+            <link rel="stylesheet" type="text/css" href="styles.css">
+            </head>
+            <body>
+              <div id="space">
+                
+              </div>
+            <div class="modal fade bg-transparent" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content bg-transparent">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        ...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+            <script src="three.min.js"></script>
+            <script src="OrbitControls.js"></script>
+            <script src="CSS3DRenderer.js"></script>
+             <script src="Chart.min.js"></script>    
+             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+            <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+            <script src='https://code.responsivevoice.org/responsivevoice.js'></script>
+            <script
+        src="https://code.jquery.com/jquery-3.3.1.js"
+        integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+        crossorigin="anonymous"></script>
+
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+<!--
+            <script src="js/controls/PointerLockControls.js"></script>
+-->
+<style type="text/css">
+  .hidden
+  {
+  visibility: hidden;
+  }
+</style>
+            <script>
+              var scene = new THREE.Scene();
+              var standart_fov=50;
+              var camera = new THREE.PerspectiveCamera(standart_fov,window.innerWidth/window.innerHeight,1,2000);
+              var renderer = new THREE.WebGLRenderer({antialias: true});
+              renderer.setPixelRatio( window.devicePixelRatio );
+              renderer.setSize(window.innerWidth,window.innerHeight);
+             // document.body.addEventListener( 'keydown', onKeyDown, false );
+              //var obj_text= new THREE.Object3D();
+              var earth_v_y = 0.07;
+              var AU=290;
+              var v_max=100;
+              var moving;
+              var rocket_stop;
+              var t = Math.PI;
+              var t_delta= Math.PI/180;
+              var camera_num=10;
+              var planets=[];
+              var gravity=false;
+              var controls = new THREE.OrbitControls( camera );
+              var charts=[];
+              controls = new THREE.OrbitControls( camera, renderer.domElement );
+              controls.screenSpacePanning=true;
+              var chart_view;
+              var chart_distance = 90; 
+              
+      controls.keys = {
+  LEFT: 37, //left arrow
+  UP: 38, // up arrow
+  RIGHT: 39, // right arrow
+  BOTTOM: 40 // down arrow
+}
+function nasa_load(link)
+{
+ // https://images-api.nasa.gov/search?keywords={Mars}&center=JPL
+          to_go = "https://images-api.nasa.gov/search?keywords={"+link+"}&center=JPL"; 
+          //center=JPL means photos from space 
+          query = $.ajax({
+              type: "GET",
+              url: to_go,
+              //"https://images-assets.nasa.gov/image/KSC-2013-3871/collection.json",
+              dataType: "json",
+              async: false
+          })
+          return query.responseJSON;
+}
+function createGlRenderer() {
+    var glRenderer = new THREE.WebGLRenderer({alpha:true});
+    glRenderer.setClearColor(0xECF8FF);
+    glRenderer.setPixelRatio(window.devicePixelRatio);
+    glRenderer.setSize(window.innerWidth, window.innerHeight);
+    glRenderer.domElement.style.position = 'absolute';
+    glRenderer.domElement.style.zIndex = 1;
+    glRenderer.domElement.style.top = 0;
+    return glRenderer;
+  }
+  cssRenderer = createCssRenderer();
+    document.body.appendChild(cssRenderer.domElement);
+  ///////////////////////////////////////////////////////////////////
+  // Creates CSS Renderer
+  ///////////////////////////////////////////////////////////////////
+  function createCssRenderer() {
+    var cssRenderer = new THREE.CSS3DRenderer();
+    cssRenderer.setSize(window.innerWidth, window.innerHeight);
+    cssRenderer.domElement.style.position = 'absolute';
+    //glRenderer.domElement.style.zIndex = 0;
+    cssRenderer.domElement.style.top = 0;
+    return cssRenderer;
+  }
+  ///////////////////////////////////////////////////////////////////
+  // Creates 3d webpage object
+  ///////////////////////////////////////////////////////////////////
+  function create3dPage( w , h , position , name , distance ) {
+    var html = [  
+      //class="alert alert-primary" role="alert"
+      '<small class="text-danger">',
+          name,
+      '</small>',
+    ].join('\n');
+    var div = document.createElement('div');
+    $(div).html(html);
+    $(div).attr("width",w);
+    $(div).attr("height",h);
+    var cssObject = new THREE.CSS3DObject(div);
+    cssObject.position.x = position.x;
+    cssObject.position.y = position.y;
+    cssObject.position.z = position.z;
+    return(cssObject);
+  }
+
+  ///////////////////////////////////////////////////////////////////
+  // Creates 3d webpage object
+  ///////////////////////////////////////////////////////////////////
+  function render_chart( w , h , name , subname , composition ,  labels , type ) {
+    var div = document.createElement('div');
+    //var button = document.createElement('button');
+    var canvas = document.createElement('canvas');
+    $(div).append(canvas);
+    //$(div).append(button);
+    //$(button).text("Max");
+    $(canvas).attr("width",w);
+    $(canvas).attr("height",h);
+
+var myChart = new Chart(canvas, {
+    type: type ,
+    data: {
+        labels: labels, 
+        datasets: [{
+            label: name + '-'+ subname,
+            data: composition , //[42, 29, 22, 6, 0.5],
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)'
+            ],
+            borderColor: [
+                'rgba(255,99,132,1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)'
+            ],
+            borderWidth: 0
+        }]
+    },
+    options: {
+responsive: false,
+maintainAspectRatio: false,
+        title: {
+            display: true,
+            fontColor: "#FFFF00",
+            text: name + '-'+ subname
+        },
+        legend: {
+            display: true,
+            labels: {
+                fontSize:10  
+            }
+        }
+    }
+});
+    var cssObject = new THREE.CSS3DObject(div);
+    return(cssObject);
+  }
+  ///////////////////////////////////////////////////////////////////
+  // Creates 3d webpage object
+  ///////////////////////////////////////////////////////////////////
+  function render_chart_list( w , h , planet ) {
+    var div = document.createElement('div');
+    //var button = document.createElement('button');
+    var canvas = document.createElement('canvas');
+    var card_body = document.createElement('div');
+    $(div).append(canvas);
+    $(canvas).attr("width",w);
+    $(canvas).attr("height",h);
+
+var items_list_html =
+            [
+     // here_modal
+     //'<div class="modal" tabindex="-1" role="dialog">',
+        '<div class="modal-dialog modal-dialog-centered" role="document">',
+          '<div class="modal-content">',
+            '<div class="modal-header">',
+              '<h5 class="modal-title" id="exampleModalLongTitle">Modal title</h5>',
+              '<button type="button" class="close" data-dismiss="modal" aria-label="Close">',
+                '<span aria-hidden="true">&times;</span>',
+              '</button>',
+            '</div>',
+            '<div class="modal-body">',
+              'lll',
+            '</div>',
+            '<div class="modal-footer">',
+              '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>',
+              '<button type="button" class="btn btn-primary">Save changes</button>',
+            '</div>',
+          '</div>',
+        '</div>',
+            ].join('\n');
+var items_list = document.createElement('div');
+         //'<div class="modal" tabindex="-1" role="dialog">',
+          //$(items_list).addClass("list-group");
+
+         $(items_list).addClass("modal");
+         $(items_list).attr("tabindex","-1");
+         $(items_list).attr("role","dialog");
+         $(items_list).modal('show');
+         
+ $(items_list).html(items_list_html);
+          document.body.appendChild(items_list);
+    var cssObject = new THREE.CSS3DObject(div);
+    return(cssObject);
+  }
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// Render Photos
+function render_video( w , h  ) {
+    var html = [  
+      '<div style="width:' + w + 'px; height:' + h + 'px;">',
+      // style="width:' + w + 'px; height:' + h + 'px;">',
+      '<h3>' + name + '</h3>',
+      '<div>',
+      '<video width="'+w+'" controls>',
+'<source src="https://images-assets.nasa.gov/video/68_WakeUpAtDawn/68_WakeUpAtDawn~orig.mp4" type="video/mp4">',
+'Your browser does not support HTML5 video.',
+      '</div>',
+'<div>'
+    ].join('\n');
+    var div = document.createElement('div');
+    $(div).html(html);
+    var cssObject = new THREE.CSS3DObject(div);
+    return(cssObject);
+  }
+//
+////////////////////////////////////////////////////////////////
+// Render Photos
+function render_photo( w , h , name , url , text,planet ) {
+    var html = [  
+      '<div style="width:' + w + 'px; height:' + h + 'px;">',
+      '<h3>' + name + '</h3>',
+      '<div>',
+      '<img src ="'+ url + '" style="width:' + w + 'px; height:' + h + 'px;">',
+      '</div>',
+'<button type="button" class="btn btn-primary"><i class="fas fa-backward"></i></button>',
+'<button type="button" class="btn btn-secondary"><i class="fas fa-arrows-alt"></i></button>',
+'<button type="button" class="btn btn-success"><i class="fas fa-forward"></i></button>',
+      '<div>',
+      '<P class ="text-danger">' + text + '</P>',
+      '</div>',
+      '</div>'
+    ].join('\n');
+    var div = document.createElement('div');
+    $(div).html(html);
+    var cssObject = new THREE.CSS3DObject(div);
+    return(cssObject);
+  }
+//
+////////////////////////////////////////////////////////////////
+// Render Photos
+////////////////////////////////////////////////////////////////
+function render_gallery_element( input , i )
+{
+    var group_html =[
+    '<div class="btn-group align-bottom text-center" role="group" aria-label="Basic example">'
+    ].join('\n');
+    var back_html =[
+        '<i class="fas fa-backward"></i>'
+    ].join('\n');
+    var next_html =[
+        '<i class="fas fa-forward"></i>'
+    ].join('\n');
+    var zoom_html =[
+        '<i class="fas fa-arrows-alt"></i>'
+    ].join('\n');
+    var list_html =[
+        '<i class="fas fa-list-ol"></i>'
+    ].join('\n');
+    var text_html =[
+       input.collection.items[0].data[0].description_508 
+    ].join('\n');
+    var html = [
+        '<div class="card_top">',
+        '<img class="card-img-top" src ="'+ input.collection.items[i].links[0].href + '" style="width:' + 250 + 'px; height:' + 250 + 'px;">',
+        '</div>'
+    ].join('\n');
+    var card_body_html =
+    [
+        '<small class="card-title">' + i + " of " +  input.collection.metadata.total_hits + '</small>',
+        '<p>' + input.collection.items[i].data[0].title + '</p>'//Name / title
+    ].join('\n');
+        var div = document.createElement('div');
+        var card_body = document.createElement('div');
+        var group= document.createElement('div');
+        var back = document.createElement('button');
+        var next = document.createElement('button');
+        var zoom = document.createElement('button');
+        var list = document.createElement('button');
+        var text = document.createElement('span');
+        $(div).html(html);
+        $(div).addClass("card");
+        $(div).css("width","250");
+        $(group).html(group_html);
+        $(card_body).html(card_body_html);    
+        $(card_body).addClass("card-body");
+        $(back).html(back_html);
+        $(back).addClass("btn btn-success");
+        $(back).attr("type","button");
+        $(next).html(next_html);
+        $(next).addClass("btn btn-success");
+        $(next).attr("type","button");
+        $(list).html(list_html);
+        $(list).addClass("btn btn-success");
+        $(list).attr("type","button");
+        $(zoom).html(zoom_html);
+        $(zoom).addClass("btn btn-success");
+        $(zoom).attr("type","button");
+        $(text).html(text_html);// text is too long. We need function for split for 2 or 3 lines
+        $(back).click(function() {
+          if (i>0)
+          {
+            i--;
+            $(div).children().children("img").attr("src",input.collection.items[i].links[0].href);
+            $(div).children().children("p").text(input.collection.items[i].data[0].title);
+            $(div).children().children("small").text(i + " of " +  input.collection.metadata.total_hits);
+            responsiveVoice.speak(input.collection.items[i].data[0].title);
+          } 
+        });
+        $(next).click(function() {
+          i++
+          $(div).children().children("img").attr("src",input.collection.items[i].links[0].href);
+          $(div).children().children("p").text(input.collection.items[i].data[0].title);
+          $(div).children().children("small").text(i + " of " +  input.collection.metadata.total_hits);
+          responsiveVoice.speak(input.collection.items[i].data[0].title);
+        });
+        $(list).click(function() {
+          $(div).width( $( window ).width() );
+          $(div).height( $( window ).height() );
+          $(div).children(".card_top").children().detach();
+          $(div).children(".card-body").detach();
+          $(group).appendTo(div);
+          var items_list = document.createElement('div');
+          $(items_list).addClass("card-group");
+          var items_list_html =
+            [
+                '<div class="card">',
+    '<img class="card-img-top" src="..." alt="Card image cap">',
+    '<div class="card-body">',
+      '<h5 class="card-title">Card title</h5>',
+      '<p class="card-text">This is a wider card with supporting text below as a natural lead-in to additional content. This content is a little bit longer.</p>',
+      '<p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p>',
+    '</div>',
+  '</div>',
+  '<div class="card">',
+    '<img class="card-img-top" src="..." alt="Card image cap">',
+    '<div class="card-body">',
+      '<h5 class="card-title">Card title</h5>',
+      '<p class="card-text">This card has supporting text below as a natural lead-in to additional content.</p>',
+      '<p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p>',
+    '</div>',
+  '</div>',
+  '<div class="card">',
+    '<img class="card-img-top" src="..." alt="Card image cap">',
+    '<div class="card-body">',
+      '<h5 class="card-title">Card title</h5>',
+      '<p class="card-text">This is a wider card with supporting text below as a natural lead-in to additional content. This card has even longer content than the first to show that equal height action.</p>',
+      '<p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p>',
+    '</div>',
+  '</div>',
+            ].join('\n');
+          $(items_list).html(items_list_html);
+          $(div).children(".card_top").append(items_list);
+        });
+//-------------------------------------------------------------------------------------------
+$(zoom).click(function() {
+          //inside modal
+          var modal_main = document.createElement('div');
+          $(modal_main).addClass("modal-dialog modal-dialog-centered");
+          $(modal_main).css(" min-width: 100%; min-height:100%; margin: 0;");
+          $(modal_main).attr("role","document");
+          //inside modal/modal_main
+          var modal_header = document.createElement('div');
+          $(modal_header).addClass("modal-header");
+          // inside modal/modal_main/modal_header
+          var modal_title = document.createElement('h5');
+          $(modal_title).addClass("modal-title");
+          $(modal_title).text("Modal Title");
+          $(modal_title).attr("id","exampleModalLongTitle");
+          var modal_title_html = [
+              //'<h5 class="modal-title" id="exampleModalLongTitle">Modal title</h5>',
+              '<button type="button" class="close" data-dismiss="modal" aria-label="Close">',
+                '<span aria-hidden="true">&times;</span>',
+              '</button>',
+          ].join('\n');
+          $(modal_title).html( $(modal_title).html() + modal_title_html);
+          var modal_content = document.createElement('div');
+          $(modal_content).addClass("modal-body");
+          var modal_body = document.createElement('div');
+          $(modal_body).addClass("modal-body");
+          var carousel_item = document.createElement('div');
+          $(carousel_item).addClass("carousel-item");
+          var carousel_img = document.createElement('img');
+           $(carousel_img).attr("src",input.collection.items[0].links[0].href);      
+          var carousel_caption = document.createElement('div');
+          $(carousel_caption).addClass("carousel-caption d-none d-md-block");
+          $(carousel_caption).html('<h5>Carusel caption</h5>'); 
+
+          var modal_footer = document.createElement('div');
+          $(modal_footer).addClass("modal-footer");
+          var footer_html = [
+              '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>',
+              '<button type="button" class="btn btn-primary">Save changes</button>',
+          ].join('\n');
+          $(modal_footer).html(footer_html);
+          $(modal_title).appendTo(modal_header);
+          $(modal_header).appendTo(modal_content);
+          $(carousel_img).appendTo(carousel_item);
+          $(carousel_caption).appendTo(carousel_item);
+          $(carousel_item).appendTo(modal_body);
+          $(carousel_item).carousel();
+          $(modal_body).appendTo(modal_content);
+          $(modal_footer).appendTo(modal_content);
+          $(modal_content).appendTo(modal_main);
+          var modal = document.createElement('div');
+          $(modal).addClass("modal");
+          $(modal).attr("tabindex","-1");
+          $(modal).attr("role","dialog");
+          $(modal).css(" min-width: 100%; min-height:100%; margin: 0;");
+          $(modal).modal('show');
+          $(modal_main).appendTo(modal);
+          document.body.appendChild(modal);
+        });
+//----------------------------------------------------------------------------------------      
+    $(group).append(back);
+    $(group).append(next);
+    $(group).append(list);
+    $(group).append(zoom);
+	$(group).append('</div>');
+    $(group).appendTo(card_body);
+    $(card_body).appendTo(div);
+    $(div).append('</div>');
+    $(div).append('</div>');
+    responsiveVoice.speak(input.collection.items[0].data[0].title);
+    var cssObject = new THREE.CSS3DObject(div);            
+    return(cssObject);
+}
+function render_gallery(to_render)
+{
+            var input = nasa_load(to_render)
+            return render_gallery_element(input,0);
+}
+var to_speak ="How to fly? Actually it is very easy. ";
+    to_speak +="In order to go ahead you have to press W button on your keyboard.";
+    to_speak +="to go left press A.";
+    to_speak +="to go right press D.";
+    to_speak +="to go back press S.";
+    to_speak +="Now remember-";
+    to_speak +="to move camera you have to hold left mouse button and drag your mouse.";
+    to_speak +="You can also fly higher, by pressing Q key. and lower by E key.";
+    to_speak +="When you click on planet, you will see numerous of photos , movies , and podcasts about this planet directly from NASA, and charts with informations about planet provided by us";
+    to_speak +="When you need help press H.";
+
+function render_manual( w , h , position , name , distance ) {
+    var html = [  
+     '<div class="modal-dialog modal-dialog-centered" role="document">',
+        '<div class="modal-content">',
+          '<div class="modal-header alert alert-info">',
+            //<input onclick='responsiveVoice.speak("Hello World");' type='button' value='🔊 Play' />
+            '<h5 class="modal-title" id="exampleModalLongTitle">How To Fly? <i class="fas fa-play" onclick="responsiveVoice.speak(to_speak)";></i> (click to hear this info)</h5>',
+              '<button type="button" class="close" data-dismiss="modal" aria-label="Close">',
+                  '<span aria-hidden="true">&times;</span>',
+              '</button>',
+          '</div>',
+    '<div class="modal-body">',
+      '<h3>Press W in order to go ahead!</h3>',
+      '<h3>Press S to go Back</h3>',
+      '<h3>Press A to go Left</h3>',
+      '<h3>Press D to go Right</h3>',
+      '<h3 class ="alert alert-danger">LMB (Left Mouse Button) + mouse drag to rotate camera</h3>',
+      '<h3>Q - go up E go down</h3>',
+      '<h3>Click on planet to see more info</h3>',
+
+    '</div>',
+    '<div class="modal-footer">',
+      '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>',
+      '<button type="button" class="btn btn-primary">Save changes</button>',
+    '</div>',
+'</div>',
+    ].join('\n');
+    var div = document.createElement('div');
+    $(div).html(html);
+    $(div).addClass("modal");
+    $(div).attr("tabindex","-1");
+    $(div).attr("role","dialog");
+    $(div).modal('show');
+    var cssObject = new THREE.CSS3DObject(div);
+    document.body.appendChild(div);
+  }
+//
+////////////////////////////////////////////////////////////////
+function remove_charts()
+{
+  planets.forEach(function(planet, index, array) 
+      {
+          if (planet.chart)
+          {
+            scene.remove(planet.chart);
+            delete planet.chart; 
+          }
+          if (planet.chart_two)
+          {
+            scene.remove(planet.chart_two);
+            delete planet.chart_two; 
+          }
+          if (planet.chart_three)
+          {
+            scene.remove( planet.chart_three);
+            delete planet.chart_three; 
+          }
+          if (planet.chart_four)
+          {
+            scene.remove(planet.chart_four);
+            delete planet.chart_four; 
+          }
+          if (planet.chart_top)
+          {
+            scene.remove(planet.chart_top);
+            delete planet.chart_top; 
+          }
+          if (planet.chart_bottom)
+          {
+            scene.remove(planet.chart_bottom);
+            delete planet.chart_bottom; 
+          }   
+      })
+}
+////////////////////////////////////////////////////////////////
+
+      function speed_up() 
+        {
+          rocket_stop=false;
+          if (camera.fov < v_max)
+            {
+              camera.fov+=0.5;
+            }
+          earth_v_y=earth_v_y/(camera.fov/standart_fov);
+          t_delta=t_delta/2;
+          camera.updateProjectionMatrix();
+          controls.update();
+          renderer.render(scene,camera);
+        }
+      function speed_down() 
+        {
+              earth_v_y = 0.07;
+              t_delta = Math.PI/180;
+              rocket_stop=true;
+        }
+      var onKeyDown = function ( event ) 
+        {
+          switch ( event.keyCode ) {
+          case 87: // w
+            //camera_num=10;
+            speed_up();
+            azimuth=controls.getAzimuthalAngle();
+            polar=controls.getPolarAngle(); 
+            scene.position.x+=10*Math.sin(azimuth);
+            scene.position.z+=10*Math.cos(azimuth);
+            scene.position.y+=10*Math.cos(polar);
+              break;
+          case 65: // d
+            //camera_num=10;
+            speed_up();
+            controls.update();
+            renderer.render(scene,camera);
+            azimuth=controls.getAzimuthalAngle();
+            polar=controls.getPolarAngle(); 
+            scene.position.z-=10*Math.sin(azimuth);
+            scene.position.x+=10*Math.cos(azimuth);
+              break;
+          case 83: // s
+            //camera_num=10;
+              speed_up();
+              controls.update();
+              renderer.render(scene,camera);
+              azimuth=controls.getAzimuthalAngle();
+              polar=controls.getPolarAngle(); 
+              scene.position.x-=10*Math.sin(azimuth);
+              scene.position.z-=10*Math.cos(azimuth);
+              scene.position.y-=10*Math.cos(polar);
+              break;
+            case 68: // a
+            //camera_num=10;
+              speed_up();
+              controls.update();
+              renderer.render(scene,camera);
+              azimuth=controls.getAzimuthalAngle();
+              polar=controls.getPolarAngle(); 
+              scene.position.z+=10*Math.sin(azimuth);
+              scene.position.x-=10*Math.cos(azimuth);
+              break;
+            case 81:
+            //camera_num=10;
+              speed_up();
+              controls.update();
+              renderer.render(scene,camera);
+              scene.position.y-=10;
+              break;
+            case 69:
+            //  camera_num=10;
+              speed_up();
+              controls.update();
+              renderer.render(scene,camera);
+              scene.position.y+=10;
+              break;
+           case 32:
+              if (moving==true)
+              {
+                alert("Planets are staying...");
+                moving=false;
+              }
+              else
+              {
+                alert("planets are moving!");
+                moving=true;
+              }
+              break; 
+          case 82:
+            break;
+          case 49:
+              //camera_num=0;
+              scene.position.x = -mercury.position.x +10 + mercury.r;
+              scene.position.y = -mercury.position.y +10 ;//+ mercury.r;
+              scene.position.z = -mercury.position.z +10 + mercury.r;
+              break;
+            case 50:
+              //camera_num=1;
+              scene.position.x = -venus.position.x +10 + venus.r;
+              scene.position.y = -venus.position.y +10 ;//+ venus.r;
+              scene.position.z = -venus.position.z +10 + venus.r;
+              break;
+            case 51:
+              //camera_num=2;
+              scene.position.x = -earth.position.x +10 +earth.r;
+              scene.position.y = -earth.position.y +10 ;//+earth.r;
+              scene.position.z = -earth.position.z +10 +earth.r; 
+              break;
+            case 52:
+              //camera_num=3;
+              scene.position.x = -mars.position.x +10 +mars.r;
+              scene.position.y = -mars.position.y +10 ;//+mars.r;
+              scene.position.z = -mars.position.z +10 +mars.r; 
+              break;
+            case 53:
+              //camera_num=4;
+              scene.position.x = -jupiter.position.x +10 + jupiter.r;
+              scene.position.y = -jupiter.position.y ;//+10 + jupiter.r;
+              scene.position.z = -jupiter.position.z +10 + jupiter.r;
+              break;
+            case 54:
+              //camera_num=5;
+              scene.position.x = -saturn.position.x +10 + saturn.r;
+              scene.position.y = -saturn.position.y ;//+10 + saturn.r;
+              scene.position.z = -saturn.position.z +10 + saturn.r; 
+              break;
+            case 55:
+              scene.position.x = -neptune.position.x +10 + neptune.r;
+              scene.position.y = -neptune.position.y ;//+10 + neptune.r;
+              scene.position.z = -neptune.position.z +10 + neptune.r; 
+              break;
+              //camera_num=6;
+            case 56:
+              //camera_num=7;
+              scene.position.x = -uranus.position.x +10 + uranus.r;
+              scene.position.y = -uranus.position.y ;//+10 + uranus.r;
+              scene.position.z = -uranus.position.z +10 + uranus.r;  
+              break;
+            case 57:
+              //camera_num=8;
+              break;
+            case 71:
+              gravity=!gravity;
+              break;
+          }
+        };
+        var onKeyUp = function ( event ) {
+          switch ( event.keyCode ) {
+            case 87: // w
+              speed_down();
+              break;
+            case 65: // d
+              speed_down();              
+              break;
+            case 83: // s
+              speed_down();
+              break;
+            case 68: // a
+              speed_down();
+              break;
+            case 81:
+              speed_down();
+              break;
+            case 69:
+              speed_down();
+              break;
+          }
+        };
+        document.addEventListener( 'keydown', onKeyDown, false );
+        document.addEventListener( 'keyup', onKeyUp, false );
+// Backgounds
+var reflectionCube = new THREE.CubeTextureLoader()
+          .setPath( 'textures/' )
+          .load( [ '2k_stars_milky_way_low.jpg', '2k_stars_milky_way_low.jpg', '2k_stars_milky_way_low.jpg', '2k_stars_milky_way_low.jpg', '2k_stars_milky_way_low.jpg', '2k_stars_milky_way_low.jpg' ] );
+
+        reflectionCube.format = THREE.RGBFormat;
+       scene.background = reflectionCube;
+              $('#space').append(renderer.domElement);
+              var loader = new THREE.CubeTextureLoader();
+loader.setPath( 'textures/' );
+//
+var earth_radio=4;
+//Sun 0
+var sun_geometry = new THREE.SphereBufferGeometry(60,20,20);
+var sun_texture = new THREE.TextureLoader().load( 'textures/sun2k.jpg' );
+var sun_material = new THREE.MeshBasicMaterial( { map: sun_texture } );
+var sun = new THREE.Mesh(sun_geometry,sun_material);
+sun.size = new THREE.Box3().setFromObject( sun );
+sun.position.set( 0, 0, 0 );
+scene.add(sun);
+
+      manual = render_manual(
+      250 , 250 ,
+      new THREE.Vector3( sun.position.x , sun.position.y , sun.position.z  ),
+      "sun.name","35 million miles");
+      scene.add( manual );
+
+//Mercury 1
+var mercury_geometry = new THREE.SphereBufferGeometry(earth_radio*0.38,20,20);
+var mercury_texture = new THREE.TextureLoader().load( 'textures/mercury2k.jpg' );
+var mercury_material = new THREE.MeshBasicMaterial( { map: mercury_texture } );
+var mercury = new THREE.Mesh(mercury_geometry,mercury_material);
+mercury.ap=0.31 * AU;
+mercury.pe=0.47 * AU;
+mercury.r=earth_radio*0.38;
+mercury.rotation_v_y = 0.0065;
+mercury.position.set( mercury.ap * Math.cos(t), 0 , mercury.pe * Math.sin(t) );
+mercury.charts=[]; 
+
+mercury.composition = [42, 29, 22, 6, 0.5];
+mercury.composition.labels = ["Molecular Oxygen: 42%", "Sodium: 29%", "Hydrogen: 22%", "Helium: 6%", "Potassium: 0.5%"];
+mercury.surface_temp = [ 100 , 300 , 700 ];
+mercury.surface_temp.labels = [ "min" , "mean" , "max" ];
+mercury.selected=false;
+mercury.callback = function() {
+$('#exampleModal').modal('show');
+/*
+    if (mercury.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        mercury.selected=true;
+    scene.position.x = -mercury.position.x;
+    scene.position.y = -mercury.position.y;
+    scene.position.z = -mercury.position.z;
+      remove_charts();
+    if ( ! mercury.chart )
+     {      
+      console.log( "mercury: ");
+      mercury.chart = render_gallery(mercury.name);
+      scene.add( mercury.chart );
+      mercury.chart.position.x = mercury.ap * Math.cos( 1.35 * Math.PI );
+      mercury.chart.position.z = mercury.pe * Math.sin( 1.35 * Math.PI );
+      charts.push( mercury.chart );
+      mercury.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+      mercury.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+      mercury.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+      mercury.chart_two = render_gallery(mercury.name);
+      scene.add( mercury.chart_two );
+      mercury.chart_two.position.x = mercury.ap * Math.cos( 1.35 * Math.PI );
+      mercury.chart_two.position.z = mercury.pe * Math.sin( 1.35 * Math.PI );
+      charts.push( mercury.chart_two );
+      mercury.chart_two.scale.x=  0.4; //1 - (charts.length / 10) ;
+      mercury.chart_two.scale.y=  0.4; //1 - (charts.length / 10) ;
+      mercury.chart_two.scale.z=  0.4; //1 - (charts.length / 10) ;
+     }
+    }
+ */
+ }
+//
+mercury.moons=[];
+//
+scene.add(mercury);
+// Distance Line between Sun and Mercury
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( mercury.position.x, mercury.position.y, mercury.position.z) );
+var mercury_line = new THREE.Line( geometry, material );
+scene.add( mercury_line );
+planets.push(mercury);
+mercury.line=mercury_line;
+mercury.name="Mercury";
+mercury.distance="35 million miles";
+// 
+//
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var mercury_plane = new THREE.Mesh( geometry, material );
+mercury.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y , mercury.position.z  ),
+      mercury.name,"35 million miles");
+scene.add(mercury.plane);
+//
+// Venus 2
+var venus_geometry = new THREE.SphereBufferGeometry(earth_radio*0.95,20,20);
+var venus_texture = new THREE.TextureLoader().load( 'textures/venus2k.jpg' );
+var venus_material = new THREE.MeshBasicMaterial( { map: venus_texture } );
+var venus = new THREE.Mesh(venus_geometry,venus_material);
+venus.ap=0.73 * AU;
+venus.pe=0.72 * AU;
+venus.r=earth_radio*0.95;
+venus.rotation_v_y = 0.0039;
+venus.position.set( venus.ap * Math.cos(t), 0 , venus.pe * Math.sin(t) );
+venus.name = "Venus";
+      venus.charts=[]; 
+/*
+"96.5% carbon dioxide", "3.5% nitrogen" , "0.015% sulfur dioxide" , "0.007% argon" , "0.002% water vapour"
+*/
+venus.composition = [ 96.5 , 3.5 , 0.015 , 0.007 , 0.002 ];
+venus.composition.labels = ["96.5% carbon dioxide", "3.5% nitrogen" , "0.015% sulfur dioxide" , "0.007% argon" , "0.002% water vapour"];
+/*
+Surface temp.   min   mean  max
+Kelvin    737 K[2]  
+Celsius     462 °C  
+*/
+venus.surface_temp = [ 737 ];
+venus.surface_temp.labels = [ "mean" ];
+venus.selected=false;
+venus.callback = function() { 
+    if (venus.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        venus.selected=true;
+    scene.position.x = -venus.position.x;
+    scene.position.y = -venus.position.y;
+    scene.position.z = -venus.position.z;
+    remove_charts();
+    if ( ! venus.chart )
+     {
+      render_gallery(mars.name)
+      console.log( "venus:");
+      venus.chart = render_gallery(venus.name);
+      scene.add( venus.chart );
+      venus.chart.position.x = venus.ap * Math.cos( 1.45 * Math.PI );
+      venus.chart.position.z = venus.pe * Math.sin( 1.45 * Math.PI );
+      charts.push( venus.chart );
+      venus.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+      venus.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+      venus.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+      venus.chart_two = render_chart( 250 , 250 , venus.name,"Temperature" , venus.surface_temp , venus.surface_temp.labels , 'bar');
+      scene.add( venus.chart_two );
+      venus.chart_two.position.x = venus.ap * Math.cos( 1.45 * Math.PI );
+      venus.chart_two.position.z = venus.pe * Math.sin( 1.45 * Math.PI );
+      charts.push( venus.chart_two );
+      venus.chart_two.scale.x=  0.4; //1 - (charts.length / 10) ;
+      venus.chart_two.scale.y=  0.4; //1 - (charts.length / 10) ;
+      venus.chart_two.scale.z=  0.4; //1 - (charts.length / 10) ;
+      venus.chart_three = render_chart( 250 , 250 , venus.name,"Composition by volume" , venus.composition , venus.composition.labels , 'doughnut');
+      scene.add( venus.chart_three );
+      venus.chart_three.position.x = venus.ap * Math.cos( 1.45 * Math.PI );
+      venus.chart_three.position.z = venus.pe * Math.sin( 1.45 * Math.PI );
+      charts.push( venus.chart_three );
+      venus.chart_three.scale.x=  0.4; //1 - (charts.length / 10) ;
+      venus.chart_three.scale.y=  0.4; //1 - (charts.length / 10) ;
+      venus.chart_three.scale.z=  0.4; //1 - (charts.length / 10) ;
+     }
+ }}
+venus.moons=[];
+scene.add(venus);
+planets.push(venus);
+// Distance Line between Sun and Venus
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( venus.position.x, venus.position.y, venus.position.z) );
+var venus_line = new THREE.Line( geometry, material );
+scene.add( venus_line );
+venus.line = venus_line;
+venus.distance = "67 million miles";
+// 
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var venus_plane = new THREE.Mesh( geometry, material );
+venus.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      venus.name,venus.distance);
+
+scene.add(venus.plane);
+// 
+//Earth 3
+var earth_geometry = new THREE.SphereBufferGeometry(earth_radio,20,20);
+var earth_texture = new THREE.TextureLoader().load( 'textures/earth2k.jpg' );
+var earth_material = new THREE.MeshBasicMaterial( { map: earth_texture } );
+var earth = new THREE.Mesh(earth_geometry,earth_material);
+earth.ap=1 * AU;
+earth.pe=1 * AU;
+earth.position.set( earth.ap * Math.cos(t), 0 , earth.pe * Math.sin(t) );
+earth.r=earth_radio;
+earth.rotation_v_y = 1;
+earth.charts=[]; 
+earth.composition = [ 78.08 , 20.95 , 0.934 , 0.0408 , 1 ];
+earth.composition.labels = ["78.08% nitrogen",  "20.95% oxygen", "0.934% argon", "0.0408% carbon dioxide", "1% water vapor (climate variable)"];
+/*
+Surface temp.   min   mean  max
+Kelvin  184 K[20]   288 K[21]   330 K[22]
+Celsius   −89.2 °C  14.9 °C   56.9 °C
+Fahrenheit  −128.5 °F   58.7 °F   134.3 °F
+*/
+earth.surface_temp = [ 184 , 288 , 330 ];
+earth.surface_temp.labels = [ "min" , "mean" , "max" ];
+earth.selected=false;
+earth.callback = function() { 
+    if (earth.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        earth.selected=true;
+    scene.position.x = -earth.position.x;
+    scene.position.y = -earth.position.y;
+    scene.position.z = -earth.position.z;
+    remove_charts();  
+        
+        /*
+        "78.08% nitrogen",  "20.95% oxygen", "0.934% argon", "0.0408% carbon dioxide", "~ 1% water vapor (climate variable)"
+        */
+    if ( ! earth.chart )
+     {
+      earth.chart =  render_gallery(earth.name);
+      scene.add( earth.chart );
+      earth.chart.position.x = earth.position.x - 80  ;
+      earth.chart.position.z = earth.position.z ;
+      charts.push( earth.chart );
+      earth.chart.scale.x=  0.3; //1 - (charts.length / 10) ;
+      earth.chart.scale.y=  0.3; //1 - (charts.length / 10) ;
+      earth.chart.scale.z=  0.3; //1 - (charts.length / 10) ;
+      earth.chart.lookAt( 0 , 0 , 0 );
+      earth.chart_two = render_chart( 250 , 250 , earth.name ,"Temperature" , earth.surface_temp , earth.surface_temp.labels , 'bar' );
+      scene.add( earth.chart_two );
+      earth.chart_two.position.x = earth.position.x ;
+      earth.chart_two.position.z = earth.position.z - 80 ;
+      charts.push( earth.chart_two );
+      earth.chart_two.scale.x=  0.3; //1 - (charts.length / 10) ;
+      earth.chart_two.scale.y=  0.3; //1 - (charts.length / 10) ;
+      earth.chart_two.scale.z=  0.3; //1 - (charts.length / 10) ;
+      earth.chart_two.lookAt( 0 , 0 , 0 );
+
+      earth.chart_three = render_chart( 250 , 250 , earth.name,"Composition by volume" , earth.composition , earth.composition.labels, 'doughnut' );
+      scene.add( earth.chart_three );
+      earth.chart_three.position.x = earth.position.x + 80 ;
+      earth.chart_three.position.z = earth.position.z ;
+      charts.push( earth.chart_three );
+      earth.chart_three.scale.x=  0.3; //1 - (charts.length / 10) ;
+      earth.chart_three.scale.y=  0.3; //1 - (charts.length / 10) ;
+      earth.chart_three.scale.z=  0.3; //1 - (charts.length / 10) ;
+      earth.chart_three.lookAt( 0 , 0 , 0 );
+     }
+ }
+}
+scene.add(earth);
+planets.push(earth);
+// Moon
+var moon_geometry = new THREE.SphereBufferGeometry(earth_radio*0.27,20,20);
+var moon_texture = new THREE.TextureLoader().load( 'textures/moon2k.jpg' );
+var moon_material = new THREE.MeshBasicMaterial( { map: moon_texture } );
+var moon = new THREE.Mesh(moon_geometry,moon_material);
+moon.offset= 2*(earth_radio)+ 0.0024*AU;
+moon.position.set( earth.position.x, earth.position.y, earth.position.z + moon.offset );
+earth.moons=[];
+earth.moons.push(moon);
+scene.add(moon);
+// Distance Line between Sun and Earth
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( earth.position.x, earth.position.y, earth.position.z) );
+var earth_line = new THREE.Line( geometry, material );
+scene.add( earth_line );
+earth.line = earth_line;
+earth.name = "Earth";
+earth.distance="93 million miles";
+// 
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var earth_plane = new THREE.Mesh( geometry, material );
+earth.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      earth.name,earth.distance);
+
+scene.add(earth.plane);
+// 
+
+//Mars 4
+var mars_geometry = new THREE.SphereBufferGeometry(earth_radio*0.53,20,20);
+var mars_texture = new THREE.TextureLoader().load( 'textures/mars2k.jpg' );
+//
+//var mars_geometry = new THREE.SphereBufferGeometry(earth_radio*0.53,200,200);
+//var mars_texture = new THREE.TextureLoader().load( 'textures/8k_mars.jpg' );
+//
+var mars_material = new THREE.MeshBasicMaterial( { map: mars_texture } );
+var mars = new THREE.Mesh(mars_geometry,mars_material);
+mars.ap=1.666 * AU;
+mars.pe=1.382 * AU;
+mars.position.set( mars.ap * Math.cos(t), 0 , mars.pe * Math.sin(t) );
+mars.r=earth_radio*0.53;
+mars.rotation_v_y = 0.51;
+mars.moons=[];
+mars.charts=[]; 
+
+
+mars.composition = [ 95.97 , 1.93 , 1.89 , 0.146 , 0.0557 ];
+mars.composition.labels = [ "95.97% carbon dioxide" , "1.93% argon" , "1.89% nitrogen" , "0.146% oxygen" , "0.0557% carbon monoxide" ];
+
+mars.surface_temp = [ 130 , 210 , 308 ];
+mars.surface_temp.labels = ["min","mean", "max"];
+mars.selected=false;
+mars.callback = function() { 
+    if (mars.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        mars.selected=true;
+    scene.position.x = -mars.position.x;
+    scene.position.y = -mars.position.y;
+    scene.position.z = -mars.position.z;
+    remove_charts();  
+
+    if ( ! mars.chart )
+     {
+      console.log( "mars: ");
+
+            
+            //render_chart( 250 , 250 , mars.name , mars.composition , mars.composition.labels );
+            
+            mars.chart = render_gallery(mars.name);
+            scene.add( mars.chart );
+            mars.chart.position.x = mars.position.x ;
+            mars.chart.position.z = mars.position.z - 80 ;
+            charts.push( mars.chart );
+            mars.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+            mars.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+            mars.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+
+            mars.chart_two = render_chart( 250 , 250 , mars.name,"Composition by volume" , mars.composition , mars.composition.labels,'doughnut' );
+            scene.add( mars.chart_two );
+            mars.chart_two.position.x = mars.position.x -80;
+            mars.chart_two.position.z = mars.position.z ;
+            charts.push( mars.chart_two );
+            mars.chart_two.scale.x=  0.4; //1 - (charts.length / 10) ;
+            mars.chart_two.scale.y=  0.4; //1 - (charts.length / 10) ;
+            mars.chart_two.scale.z=  0.4; //1 - (charts.length / 10) ;
+            mars.chart_two.lookAt( 0 , 0 , 0 );
+
+
+      mars.chart_three = render_video( 250 , 250  );
+      scene.add( mars.chart_three );
+      mars.chart_three.position.x = mars.position.x +80;
+      mars.chart_three.position.z = mars.position.z ;
+      charts.push( mars.chart_three );
+      mars.chart_three.scale.x=  0.4; //1 - (charts.length / 10) ;
+      mars.chart_three.scale.y=  0.4; //1 - (charts.length / 10) ;
+      mars.chart_three.scale.z=  0.4; //1 - (charts.length / 10) ;
+      mars.chart_three.lookAt( 0 , 0 , 0 );
+      
+      mars.chart_four = render_chart( 250 , 250 , mars.name, "Temperature" , mars.surface_temp , mars.surface_temp.labels,'bar' );
+      scene.add( mars.chart_four );
+      mars.chart_four.position.x = mars.position.x ; 
+      mars.chart_four.position.z = mars.position.z +80 ;
+      charts.push( mars.chart_four );
+      mars.chart_four.scale.x=  0.4; //1 - (charts.length / 10) ;
+      mars.chart_four.scale.y=  0.4; //1 - (charts.length / 10) ;
+      mars.chart_four.scale.z=  0.4; //1 - (charts.length / 10) ;
+      mars.chart_four.lookAt( 0 , 0 , 0 );
+      
+      
+     }
+ }
+}
+scene.add(mars);
+planets.push(mars);
+// Distance Line between Sun and mars
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( mars.position.x, mars.position.y, mars.position.z) );
+var mars_line = new THREE.Line( geometry, material );
+scene.add( mars_line );
+mars.line = mars_line;
+mars.name = "Mars";
+mars.distance = "142 million miles "
+// 
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var mars_plane = new THREE.Mesh( geometry, material );
+mars.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      mars.name,mars.distance);
+
+scene.add(mars.plane);
+// 
+//Phobos moon of mars
+var phobos_geometry = new THREE.SphereBufferGeometry(earth_radio*0.18,20,20);
+var phobos_texture = new THREE.TextureLoader().load( 'textures/phobos2k.jpg' );
+var phobos_material = new THREE.MeshBasicMaterial( { map: phobos_texture } );
+var phobos = new THREE.Mesh(phobos_geometry,phobos_material);
+phobos.offset= 1*(mars.r) - 5;
+mars.moons.push(phobos);
+phobos.position.set( mars.position.x + phobos.offset, mars.position.y, mars.position.z + phobos.offset);
+scene.add(phobos);
+//Deimos 2nd moon of mars
+var deimos_geometry = new THREE.SphereBufferGeometry(earth_radio*0.1,20,20);
+var deimos_texture = new THREE.TextureLoader().load( 'textures/deimos2k.jpg' );
+var deimos_material = new THREE.MeshBasicMaterial( { map: deimos_texture } );
+var deimos = new THREE.Mesh(deimos_geometry,deimos_material);
+deimos.offset= 1*(mars.r) + 5;
+mars.moons.push(deimos);
+deimos.position.set( mars.position.x + deimos.offset, mars.position.y, mars.position.z + deimos.offset );
+scene.add(deimos);
+
+//Jupiter 5
+var jupiter_geometry = new THREE.SphereBufferGeometry(earth_radio*11.20,20,20);
+var jupiter_texture = new THREE.TextureLoader().load( 'textures/jupiter2k.jpg' );
+
+var jupiter_material = new THREE.MeshBasicMaterial( { map: jupiter_texture } );
+var jupiter = new THREE.Mesh(jupiter_geometry,jupiter_material);
+jupiter.ap=5.4588  * AU;
+jupiter.pe=4.9501 * AU;
+jupiter.position.set( jupiter.ap * Math.cos(t), 0 , jupiter.pe * Math.sin(t) );
+jupiter.r=earth_radio*11.20;
+jupiter.rotation_v_y = 27.24;
+      jupiter.charts=[]; 
+
+
+jupiter.composition = [ 89 , 10 , 0.3 , 0.026 , 0.0028 ];
+jupiter.composition.labels = [ "89%  hydrogen" , "10%  helium" , "0.3% methane" , "0.026% ammonia" , "0.0028% hydrogen deuteride" ];
+
+jupiter.surface_temp =[ 112 , 165 ];
+jupiter.surface_temp.labels =[ "0.1 Bar" , "1 Bar" ];
+jupiter.selected=false;
+jupiter.callback = function() {
+    if (jupiter.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        jupiter.selected=true; 
+    scene.position.x = -jupiter.position.x;
+    scene.position.y = -jupiter.position.y;
+    scene.position.z = -jupiter.position.z;
+    remove_charts();  
+    if ( ! jupiter.chart )
+     {
+      
+
+      console.log( "jupiter: ");
+      jupiter.chart = render_gallery(jupiter.name);
+      scene.add( jupiter.chart );
+      jupiter.chart.position.x = jupiter.position.x - 80 ;
+      jupiter.chart.position.z = jupiter.position.z;
+      charts.push( jupiter.chart );
+      jupiter.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+      jupiter.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+      jupiter.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+
+      jupiter.chart_two = render_chart( 250 , 250 , jupiter.name,"Temperature", jupiter.surface_temp , jupiter.surface_temp.labels, 'bar' );
+
+      scene.add( jupiter.chart_two );
+      jupiter.chart_two.position.x = jupiter.position.x ;
+      jupiter.chart_two.position.z = jupiter.position.z - 80 ;
+      charts.push( jupiter.chart_two );
+      jupiter.chart_two.scale.x=  0.3; //1 - (charts.length / 10) ;
+      jupiter.chart_two.scale.y=  0.3; //1 - (charts.length / 10) ;
+      jupiter.chart_two.scale.z=  0.3; //1 - (charts.length / 10) ;
+      jupiter.chart_two.lookAt( 0 , 0 , 0 );
+
+      jupiter.chart_three = render_chart( 250 , 250 , jupiter.name,"Composition by volume" , jupiter.composition , jupiter.composition.labels,'doughnut' );
+      scene.add( jupiter.chart_three );
+      jupiter.chart_three.position.x = jupiter.position.x + 80 ;
+      jupiter.chart_three.position.z = jupiter.position.z ;
+      charts.push( jupiter.chart_three );
+      jupiter.chart_three.scale.x=  0.3; //1 - (charts.length / 10) ;
+      jupiter.chart_three.scale.y=  0.3; //1 - (charts.length / 10) ;
+      jupiter.chart_three.scale.z=  0.3; //1 - (charts.length / 10) ;
+      jupiter.chart_three.lookAt( 0 , 0 , 0 );
+     }
+ }
+}
+scene.add(jupiter);
+planets.push(jupiter);
+// Distance Line between Sun and jupiter
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( jupiter.position.x, jupiter.position.y, jupiter.position.z) );
+var jupiter_line = new THREE.Line( geometry, material );
+scene.add( jupiter_line );
+jupiter.line = jupiter_line;
+jupiter.name = "Jupiter";
+jupiter.distance ="484 million miles" ;
+// 
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var jupiter_plane = new THREE.Mesh( geometry, material );
+jupiter.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      jupiter.name,jupiter.distance);
+scene.add(jupiter.plane);
+
+//Asteroids Belt
+//asteroids_belt.png
+
+var geometry = new THREE.TorusBufferGeometry( (mars.position.x + jupiter.position.x) /2, 1*AU, 30, 30 );
+var asteroids_texture = new THREE.TextureLoader().load( 'textures/Untitled.png' );
+
+var material = new THREE.MeshBasicMaterial( { map: asteroids_texture } );
+material.opacity = 0.8;
+material.transparent = true;
+var asteroids_belt = new THREE.Mesh( geometry, material );
+scene.add( asteroids_belt );
+asteroids_belt.rotation.x=Math.PI/2;
+
+var asteroid = render_photo( 200 , 200 , "how does Asteroid look like?" , 'textures/685735main_pia15678-43_full.png' , "It is example of asteroid" );
+scene.add( asteroid );
+asteroid.position.x = (mars.position.x + jupiter.position.x) /2;
+asteroid.position.y = 0;
+asteroid.position.z = (mars.position.z + jupiter.position.z) /2;
+
+asteroid.callback = function() { 
+      console.log( "asteroids_belt: ");
+ }
+
+//Saturn 6
+var saturn_geometry = new THREE.SphereBufferGeometry(earth_radio*9.5,20,20);
+var saturn_texture = new THREE.TextureLoader().load( 'textures/saturn2k.jpg' );
+
+var saturn_material = new THREE.MeshBasicMaterial( { map: saturn_texture } );
+var saturn = new THREE.Mesh(saturn_geometry,saturn_material);
+saturn.ap=10.1238  * AU;
+saturn.pe=9.0412 * AU;
+saturn.position.set( saturn.ap * Math.cos(t), 0 , saturn.pe * Math.sin(t) );
+saturn.r=earth_radio*9.5;
+saturn.rotation_v_y = 22.01;
+      saturn.charts=[]; 
+
+
+saturn.composition = [ 96.3 , 3.25 , 0.3 , 0.45 , 0.0125 ];
+saturn.composition.labels = [ "96.3%±2.4%  hydrogen", "3.25%±2.4%  helium", "0.45%±0.2%  methane", "0.0125%±0.0075% ammonia" ];
+saturn.surface_temp = [ 84 , 134 ];
+saturn.surface_temp.labels = [ "0.1 Bar" , "1 Bar" ];
+saturn.selected=false;
+saturn.callback = function() { 
+    if (saturn.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        saturn.selected=true;
+    scene.position.x = -saturn.position.x;
+    scene.position.y = -saturn.position.y;
+    scene.position.z = -saturn.position.z;
+    remove_charts();        
+    if ( ! saturn.chart )
+     {
+      console.log( "saturn: ");
+      saturn.chart = render_gallery(saturn.name);
+      scene.add( saturn.chart );
+      saturn.chart.position.x = saturn.ap * Math.cos( 1.05 * Math.PI );
+      saturn.chart.position.z = saturn.pe * Math.sin( 1.05 * Math.PI );
+      charts.push( saturn.chart );
+      saturn.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+      saturn.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+      saturn.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+      saturn.chart_two = render_chart( 250 , 250 , saturn.name,"Temperature" , saturn.surface_temp , saturn.surface_temp.labels ,'bar' );
+      scene.add( saturn.chart_two );
+      saturn.chart_two.position.x = saturn.ap * Math.cos( 1.05 * Math.PI );
+      saturn.chart_two.position.z = saturn.pe * Math.sin( 1.05 * Math.PI );
+      charts.push( saturn.chart_two );
+      saturn.chart_two.scale.x=  0.4; //1 - (charts.length / 10) ;
+      saturn.chart_two.scale.y=  0.4; //1 - (charts.length / 10) ;
+      saturn.chart_two.scale.z=  0.4; //1 - (charts.length / 10) ;
+     }
+ }
+}
+scene.add(saturn);
+planets.push(saturn);
+// Distance Line between Sun and saturn
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( saturn.position.x, saturn.position.y, saturn.position.z) );
+var saturn_line = new THREE.Line( geometry, material );
+scene.add( saturn_line );
+saturn.line=saturn_line;
+saturn.name="Saturn";
+saturn.distance = "889 million miles";
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var saturn_plane = new THREE.Mesh( geometry, material );
+saturn.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      saturn.name,saturn.distance);
+      scene.add(saturn.plane);
+
+var geometry = new THREE.RingBufferGeometry(earth_radio*9.5 + 50,earth_radio*9.5 + 90, 50, 50 );
+var satrurn_ring_material = new THREE.TextureLoader().load( 'textures/saturnringcolor2k.jpg' );
+var material = new THREE.MeshBasicMaterial( { map: satrurn_ring_material, side: THREE.DoubleSide } );
+var saturn_rings = new THREE.Mesh( geometry, material );
+scene.add( saturn_rings );
+saturn_rings.position.set( saturn.position.x , 0, saturn.position.z );
+saturn_rings.rotation.x=1.57;
+saturn_rings.offset=0;
+saturn.ring=saturn_rings;
+
+//Uranus 7
+
+var uranus_geometry = new THREE.SphereBufferGeometry(earth_radio*4.100,20,20);
+var uranus_texture = new THREE.TextureLoader().load( 'textures/uranus2k.jpg' );
+
+var uranus_material = new THREE.MeshBasicMaterial( { map: uranus_texture } );
+var uranus = new THREE.Mesh(uranus_geometry,uranus_material);
+uranus.ap=20.11  * AU;
+uranus.pe=18.33 * AU;
+uranus.position.set( uranus.ap * Math.cos(t), 0 , uranus.pe * Math.sin(t) );
+uranus.r=earth_radio*4.100;
+uranus.rotation_v_y = 8.84;
+      uranus.charts=[]; 
+uranus.composition = [ 83 , 15 , 2.3 , 0.009 ];
+uranus.composition.labels = [ "83% hydrogen" , "15% helium" , "2.3% methane" , "0.009% hydrogen deuteride" ];
+
+uranus.surface_temp = [ 47 , 53 , 57 , 76 ];
+uranus.surface_temp.labels = [ "0.1 Bar min" , "0.1 Bar mean" , "0.1 Bar max" , "1 Bar mean" ];
+uranus.selected=false;
+uranus.callback = function() { 
+    if (uranus.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        uranus.selected=true;
+    scene.position.x = -uranus.position.x;
+    scene.position.y = -uranus.position.y;
+    scene.position.z = -uranus.position.z;
+    remove_charts();  
+    if ( ! uranus.chart )
+     {
+      console.log( "uranus: ");
+      uranus.chart = render_gallery(uranus.name);
+      scene.add( uranus.chart );
+      uranus.chart.position.x = uranus.ap * Math.cos( 1.01 * Math.PI );
+      uranus.chart.position.z = uranus.pe * Math.sin( 1.01 * Math.PI );
+      charts.push( uranus.chart );
+      uranus.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+      uranus.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+      uranus.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+      uranus.chart_two = render_chart( 400 , 400 , uranus.name, "Temperature" , uranus.surface_temp , uranus.surface_temp.labels , 'bar' );
+     
+      scene.add( uranus.chart_two );
+      uranus.chart_two.position.x = uranus.ap * Math.cos( 1.01 * Math.PI );
+      uranus.chart_two.position.z = uranus.pe * Math.sin( 1.01 * Math.PI );
+      charts.push( uranus.chart_two );
+      uranus.chart_two.scale.x=  0.4; //1 - (charts.length / 10) ;
+      uranus.chart_two.scale.y=  0.4; //1 - (charts.length / 10) ;
+      uranus.chart_two.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+     }
+ }
+}
+scene.add(uranus);
+planets.push(uranus);
+// Distance Line between Sun and uranus
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( uranus.position.x, uranus.position.y, uranus.position.z) );
+var uranus_line = new THREE.Line( geometry, material );
+scene.add( uranus_line );
+uranus.line = uranus_line;
+uranus.name = "Uranus";
+uranus.distance = "1.79 billion miles";
+// 
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var uranus_plane = new THREE.Mesh( geometry, material );
+uranus.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      uranus.name,uranus.distance);
+
+scene.add(uranus.plane);
+//Neptune 8
+var neptune_geometry = new THREE.SphereBufferGeometry(earth_radio*3.88,20,20);
+var neptune_texture = new THREE.TextureLoader().load( 'textures/neptune2k.jpg' );
+
+var neptune_material = new THREE.MeshBasicMaterial( { map: neptune_texture } );
+var neptune = new THREE.Mesh(neptune_geometry,neptune_material);
+neptune.ap=30.33 * AU;
+neptune.pe=29.81 * AU;
+neptune.position.set( neptune.ap * Math.cos(t), 0 , neptune.pe * Math.sin(t) );
+neptune.r=earth_radio*3.88;
+neptune.rotation_v_y = 5.81;
+      neptune.charts=[]; 
+
+neptune.composition = [ 80 , 19 , 1.5 , 0.019, 0.00015 ];
+neptune.composition.labels = [ "80% hydrogen (H2)" , "19% helium (He)" , "1.5% methane (CH4)" , "0.019% hydrogen deuteride (HD)" , "0.00015% ethane (C2H6)" ];
+
+neptune.surface_temp = [ 55 , 72 ];
+neptune.surface_temp.labels = [ "0.1 Bar" , "1 Bar" ];
+neptune.selected=false;
+
+
+neptune.callback = function() { 
+    if (neptune.selected==false)
+      {
+        planets.forEach(function(planet, index, array) {
+          planet.selected = false;
+        })
+        neptune.selected=true;
+    scene.position.x = -neptune.position.x;
+    scene.position.y = -neptune.position.y;
+    scene.position.z = -neptune.position.z;
+    remove_charts();  
+    if ( ! neptune.chart )
+     {
+      
+
+      console.log( "neptune: ");
+      neptune.chart = render_gallery(neptune.name);
+      scene.add( neptune.chart );
+      neptune.chart.position.x = neptune.ap * Math.cos( 1.01 * Math.PI );
+      neptune.chart.position.z = neptune.pe * Math.sin( 1.01 * Math.PI );
+      charts.push( neptune.chart );
+      neptune.chart.scale.x=  0.4; //1 - (charts.length / 10) ;
+      neptune.chart.scale.y=  0.4; //1 - (charts.length / 10) ;
+      neptune.chart.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+      neptune.chart_two = render_chart( 300 , 300 , neptune.name , neptune.surface_temp , neptune.surface_temp.labels ,'bar');
+      scene.add( neptune.chart_two );
+      neptune.chart_two.position.x = neptune.ap * Math.cos( 1.01 * Math.PI );
+      neptune.chart_two.position.z = neptune.pe * Math.sin( 1.01 * Math.PI );
+      charts.push( neptune.chart_two );
+      neptune.chart_two.scale.x=  0.4; //1 - (charts.length / 10) ;
+      neptune.chart_two.scale.y=  0.4; //1 - (charts.length / 10) ;
+      neptune.chart_two.scale.z=  0.4; //1 - (charts.length / 10) ;
+
+      neptune.chart_three = render_chart( 250 , 250 , neptune.name , neptune.composition , neptune.composition.labels ,'doughnut');
+      scene.add( neptune.chart_three );
+      neptune.chart_three.position.x = neptune.ap * Math.cos( 1.01 * Math.PI );
+      neptune.chart_three.position.z = neptune.pe * Math.sin( 1.01 * Math.PI );
+      charts.push( neptune.chart_three );
+      neptune.chart_three.scale.x=  0.4; //1 - (chart_threes.length / 10) ;
+      neptune.chart_three.scale.y=  0.4; //1 - (chart_threes.length / 10) ;
+      neptune.chart_three.scale.z=  0.4; //1 - (chart_threes.length / 10) ;
+
+     }
+ }
+}
+scene.add(neptune);
+planets.push(neptune);
+// Distance Line between Sun and neptune
+var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+var geometry = new THREE.Geometry();
+geometry.vertices.push(new THREE.Vector3( 0, 0, 0) );
+geometry.vertices.push(new THREE.Vector3( neptune.position.x, neptune.position.y, neptune.position.z) );
+var neptune_line = new THREE.Line( geometry, material );
+scene.add( neptune_line );
+neptune.line = neptune_line;
+neptune.name = "Neptune";
+neptune.distance = "2.8 billion miles";
+// 
+var geometry = new THREE.PlaneBufferGeometry( 5 , 5 , 20, 32 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var neptune_plane = new THREE.Mesh( geometry, material );
+neptune.plane = create3dPage(
+      150, 150,
+      new THREE.Vector3(mercury.position.x, mercury.position.y, mercury.position.z),
+      neptune.name,neptune.distance);
+
+scene.add(neptune.plane);
+
+//Asteroids Belt
+//asteroids_belt.png
+
+var geometry = new THREE.TorusBufferGeometry( (neptune.position.x - 100), 1*AU, 50, 50 );
+var asteroids_texture = new THREE.TextureLoader().load( 'textures/Untitled2.png' );
+
+var material = new THREE.MeshBasicMaterial( { map: asteroids_texture } );
+material.opacity = 0.8;
+material.transparent = true;
+var asteroids_belt_two = new THREE.Mesh( geometry, material );
+scene.add( asteroids_belt_two );
+asteroids_belt_two.rotation.x=Math.PI/2;
+
+
+
+//
+sun.matrixAutoUpdate = false;
+sun.updateMatrix();
+mercury.matrixAutoUpdate = false;
+mercury.updateMatrix();
+venus.matrixAutoUpdate = false;
+venus.updateMatrix();
+earth.matrixAutoUpdate = false;
+earth.updateMatrix();
+moon.matrixAutoUpdate = false;
+moon.updateMatrix();
+mars.matrixAutoUpdate = false;
+mars.updateMatrix();
+phobos.matrixAutoUpdate = false;
+phobos.updateMatrix();
+deimos.matrixAutoUpdate = false;
+deimos.updateMatrix();
+jupiter.matrixAutoUpdate = false;
+jupiter.updateMatrix();
+asteroids_belt.matrixAutoUpdate = false;
+asteroids_belt.updateMatrix();
+saturn.matrixAutoUpdate = false;
+saturn.updateMatrix();
+uranus.matrixAutoUpdate = false;
+uranus.updateMatrix();
+neptune.matrixAutoUpdate = false;
+neptune.updateMatrix();
+asteroids_belt_two.matrixAutoUpdate = false;
+asteroids_belt_two.updateMatrix();
+
+//
+
+              camera.position.set( 10, 10, 0 );
+              controls.update();
+              renderer.render(scene,camera);
+              function connect_to(planet)
+              {
+                  scene.position.x= -planet.position.x;//+ distance_to_planet_x_no_abs;
+                  scene.position.y= -planet.position.y;//+ distance_to_planet_y_no_abs;
+                  scene.position.z= -planet.position.z;//+ distance_to_planet_z_no_abs;
+              }
+              function count_distance(planet)
+              {
+                result = [];
+
+                distance_to_planet_x= [];
+                distance_to_planet_x.push(scene.position.x);
+                distance_to_planet_x.push(planet.position.x);
+                distance_to_planet_x.sort(function(a, b) {return a - b;});
+                distance_to_planet_x= Math.abs(Math.abs(distance_to_planet_x[1])-Math.abs(distance_to_planet_x[0]));
+              
+                distance_to_planet_y= [];
+                distance_to_planet_y.push(scene.position.y);
+                distance_to_planet_y.push(planet.position.y);
+                distance_to_planet_y.sort(function(a, b) {return a - b;});
+                distance_to_planet_y= Math.abs(Math.abs(distance_to_planet_y[1])-Math.abs(distance_to_planet_y[0]));
+        
+                distance_to_planet_z= [];
+                distance_to_planet_z.push(scene.position.z);
+                distance_to_planet_z.push(planet.position.z);
+                distance_to_planet_z.sort(function(a, b) {return a - b;});
+                distance_to_planet_z= Math.abs(Math.abs(distance_to_planet_z[1])-Math.abs(distance_to_planet_z[0]));
+                distance_to_planet_all=Math.pow(distance_to_planet_x, 2)+Math.pow(distance_to_planet_z, 2)
+                distance_to_planet_all=Math.pow(distance_to_planet_all,0.5);
+                distance_to_planet_all=Math.pow(distance_to_planet_all, 2)+Math.pow(distance_to_planet_y, 2)
+                distance_to_planet_all=Math.pow(distance_to_planet_all,0.5);                
+
+                distance_to_planet_x_no_abs= (scene.position.x-planet.position.x);
+                distance_to_planet_y_no_abs= (scene.position.y-planet.position.y);
+                distance_to_planet_z_no_abs= (scene.position.z-planet.position.z);
+              if ( distance_to_planet_all < 80 ){
+                //console.log("Distance to " + planet.name + " = " +distance_to_planet_all);
+              }
+              if ( distance_to_planet_all < planet.r + 45 ){
+                //console.log("Welcome to "+planet.name);
+                if (gravity==true)
+                 {  
+                  connect_to(planet);
+                 }              
+              }
+              result.push(distance_to_planet_all);
+
+              result.push(distance_to_planet_x);
+              result.push(distance_to_planet_y);
+              result.push(distance_to_planet_y);
+              
+              return result;      
+              }
+              var animate = function(){
+                 setTimeout( function() {
+                    requestAnimationFrame( animate );
+                  }, 1000 / 25 );
+
+    //renderer.render();
+                //requestAnimationFrame(animate);
+                
+                sun.rotation.y +=earth_v_y*4.3;   
+                asteroids_belt.rotation.z += earth_v_y/2;//*4.3;
+                asteroids_belt_two.rotation.z += earth_v_y/2;//*4.3;
+                asteroid.lookAt( 0 , 0 , 0 );
+//
+sun.updateMatrix();
+mercury.updateMatrix();
+venus.updateMatrix();
+earth.updateMatrix();
+moon.updateMatrix();
+mars.updateMatrix();
+phobos.updateMatrix();
+deimos.updateMatrix();
+jupiter.updateMatrix();
+asteroids_belt.updateMatrix();
+saturn.updateMatrix();
+uranus.updateMatrix();
+neptune.updateMatrix();
+asteroids_belt_two.updateMatrix();
+//
+planets.forEach(function(planet, index, array) {
+    count_distance(planet);
+    
+    if (planet.plane) 
+      {
+        planet.plane.lookAt( 0,0,0 );
+        planet.plane.position.x = planet.position.x - planet.r;
+        planet.plane.position.y = planet.position.y - planet.r - 20;
+        planet.plane.position.z = planet.position.z - planet.r;
+        planet.rotation.y += earth_v_y * planet.rotation_v_y;
+      }
+    if (planet.chart) 
+      {
+        if (count_distance(planet)[0] >100 && count_distance(planet)[2] >100)
+        {
+          chart_view = "up";  
+        }
+        else if (count_distance(planet)[0] >100) 
+        {
+          chart_view = "line";
+        }
+        else 
+        {
+          chart_view = "cube";
+        }
+          planet.chart.lookAt( 0 , 0 , 0 ); 
+            if (chart_view == "line") 
+            {
+              planet.chart.position.x = planet.position.x;
+              planet.chart.position.y = planet.position.y + 0.7 * chart_distance;
+              planet.chart.position.z = planet.position.z;  
+            }
+            else if (chart_view == "up") 
+            {
+              planet.chart.position.x = planet.position.x - chart_distance;
+              planet.chart.position.y = planet.position.y ;
+              planet.chart.position.z = planet.position.z + chart_distance;  
+            }
+            else if (chart_view =="cube")
+            {
+              planet.chart.position.x = planet.position.x;
+              planet.chart.position.y = planet.position.y;
+              planet.chart.position.z = planet.position.z - 80 ;
+            }
+        }
+
+    if (planet.chart_two) 
+      {
+          planet.chart_two.lookAt( 0 , 0 , 0 );      
+            if (chart_view == "line") 
+            {
+              planet.chart_two.position.x = planet.position.x;
+              planet.chart_two.position.y = planet.position.y - 0.7 * chart_distance;
+              planet.chart_two.position.z = planet.position.z;
+            }
+            else if (chart_view == "up") 
+            { 
+              planet.chart_two.position.x = planet.position.x;
+              planet.chart_two.position.y = planet.position.y;
+              planet.chart_two.position.z = planet.position.z + chart_distance;
+            }          
+            else if (chart_view == "cube") 
+            {
+              planet.chart_two.position.x = planet.position.x -80;
+              planet.chart_two.position.y = planet.position.y;
+              planet.chart_two.position.z = planet.position.z;
+            }               
+      }
+    if (planet.chart_three) 
+      {
+          planet.chart_three.lookAt( 0 , 0 , 0 );
+            if (chart_view == "line") 
+            {
+              planet.chart_three.position.x = planet.position.x - chart_distance;
+              planet.chart_three.position.y = planet.position.y - 0.7 * chart_distance;
+              planet.chart_three.position.z = planet.position.z - chart_distance;
+            } 
+            else if (chart_view == "up") 
+            {
+              planet.chart_three.position.x = planet.position.x + chart_distance;
+              planet.chart_three.position.y = planet.position.y;
+              planet.chart_three.position.z = planet.position.z + chart_distance;
+            }        
+            else if (chart_view == "cube")
+            {
+              planet.chart_three.position.x = planet.position.x +80;
+              planet.chart_three.position.y = planet.position.y ;
+              planet.chart_three.position.z = planet.position.z ;
+            }
+      }
+    if (planet.chart_four) 
+      {
+          planet.chart_four.lookAt( 0 , 0 , 0 );      
+            if (chart_view == "line") 
+            {
+              planet.chart_four.position.x = planet.position.x - chart_distance;
+              planet.chart_four.position.y = planet.position.y + 0.7 * chart_distance;
+              planet.chart_four.position.z = planet.position.z - chart_distance;
+            }
+            else if (chart_view == "up") 
+            {
+              planet.chart_four.position.x = planet.position.x - chart_distance;
+              planet.chart_four.position.y = planet.position.y ;//- chart_distance;
+              planet.chart_four.position.z = planet.position.z - chart_distance;
+            }
+            else if (chart_view == "cube")
+            {
+              planet.chart_four.position.x = planet.position.x ; 
+              planet.chart_four.position.y = planet.position.y ;
+              planet.chart_four.position.z = planet.position.z +80 ;
+            }        
+      }
+    if (planet.chart_top) 
+      {
+          planet.chart_top.lookAt( 0 , 0 , 0 );                  
+            if (chart_view == "line") 
+            {
+              planet.chart_top.position.x = planet.position.x + chart_distance;
+              planet.chart_top.position.y = planet.position.y + 0.7 * chart_distance;
+              planet.chart_top.position.z = planet.position.z + chart_distance;
+            }        
+            else if (chart_view == "up") 
+            {
+              planet.chart_top.position.x = planet.position.x ;//- 0.7 * chart_distance;
+              planet.chart_top.position.y = planet.position.y ;// chart_distance;
+              planet.chart_top.position.z = planet.position.z - chart_distance;
+            }
+            else if (chart_view == "cube")
+            {           
+              planet.chart_top.position.x = planet.position.x ; 
+              planet.chart_top.position.z = planet.position.z ;
+              planet.chart_top.position.y = planet.position.y + 80 ;
+            }
+      } 
+    if (planet.chart_bottom) 
+      {
+          planet.chart_bottom.lookAt( 0 , 0 , 0 );      
+            if (chart_view == "line") 
+            {
+              planet.chart_bottom.position.x = planet.position.x + chart_distance;
+              planet.chart_bottom.position.y = planet.position.y -0.7 * chart_distance;
+              planet.chart_bottom.position.z = planet.position.z + chart_distance;
+            }      
+            else if (chart_view == "up") 
+            {
+              planet.chart_bottom.position.x = planet.position.x + chart_distance;
+              planet.chart_bottom.position.y = planet.position.y ;//+ chart_distance;
+              planet.chart_bottom.position.z = planet.position.z - chart_distance;
+            }             
+            else if (chart_view) 
+            {
+              planet.chart_bottom.position.x = planet.position.x ; 
+              planet.chart_bottom.position.z = planet.position.z ;
+              planet.chart_bottom.position.y = planet.position.y - chart_distance;
+            }
+      } 
+    if (rocket_stop==true && camera.fov > standart_fov) 
+      {
+        camera.fov-=0.5;
+        camera.updateProjectionMatrix(); 
+      }
+    if(moving==true)
+      {
+        planet.position.x = planet.ap * Math.cos(t);
+        planet.position.z = planet.pe * Math.sin(t); 
+          if (planet.moons) 
+            {
+              planet.moons.forEach(function(moon, index, array) {
+                moon.position.x=planet.position.x+moon.offset;
+                moon.position.z=planet.position.z+moon.offset;
+              });
+            }
+          if (planet.ring)
+            {
+              planet.ring.position.x=planet.position.x+planet.ring.offset;
+              planet.ring.position.z=planet.position.z+planet.ring.offset;
+            }
+          if (planet.line) 
+            {
+              planet.line.geometry.vertices[1].x=planet.position.x;
+              planet.line.geometry.vertices[1].y=planet.position.y;
+              planet.line.geometry.vertices[1].z=planet.position.z;
+              planet.line.geometry.verticesNeedUpdate =true;
+            }   
+}
+               controls.update();
+               renderer.render(scene,camera);
+              });
+              t+=t_delta;
+              controls.update();
+              renderer.render(scene,camera);
+              cssRenderer.render(scene, camera); 
+              }
+    var raycaster = new THREE.Raycaster();
+    var mouse = new THREE.Vector2();
+
+    // See https://stackoverflow.com/questions/12800150/catch-the-click-event-on-a-specific-mesh-in-the-renderer
+    // Handle all clicks to determine of a three.js object was clicked and trigger its callback
+    function onDocumentMouseDown(event) {
+        event.preventDefault();
+        mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+        mouse.y =  - (event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        //meshObjects = [sun, mercury ,venus, mars]; 
+        // three.js objects with click handlers we are interested in
+        var intersects = raycaster.intersectObjects(planets);
+        if (intersects.length) {
+            intersects[0].object.callback();
+        }
+    }
+    document.addEventListener('mousedown', onDocumentMouseDown, false);
+              animate();
+            </script>
+            <style type="text/css">
+                    html, body {
+        background-color: #000;
+        margin: 0px;
+        padding: 0px;
+        overflow: hidden;
+      }
+              #space
+              {
+                height: 100%,
+                padding: 0,
+                margin:0;
+              }
+            </style>
+            </body>
+    </html>
